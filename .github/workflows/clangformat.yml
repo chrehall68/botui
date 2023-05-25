@@ -27,6 +27,12 @@ jobs:
           git config user.email ""
       - name: Push to GitHub
         run:  |
+          echo ${{github.head_ref}}
+          echo ${{github.base_ref}}
+          echo ${{github.action_ref}}
+          echo ${{github.ref}}
+          echo ${{github.ref_name}}
+          git show-refs
           git commit -a -m "AutoFormat with clang-format"
           git push origin ${{github.head_ref}}
           
