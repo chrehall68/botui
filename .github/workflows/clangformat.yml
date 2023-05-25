@@ -32,7 +32,6 @@ jobs:
           echo ${{github.action_ref}}
           echo ${{github.ref}}
           echo ${{github.ref_name}}
-          git show-ref
           git commit -a -m "AutoFormat with clang-format"
-          git push origin ${{github.head_ref}}
+          git push origin HEAD:${{github.head_ref}}
           
