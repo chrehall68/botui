@@ -19,7 +19,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           status: pending
           description: awaiting formatting
-          context: format-status
+          context: formatting-status
 
       - uses: actions/checkout@v3
         with:
@@ -47,4 +47,4 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           status: success
           description: All files formatted!
-          context: format-status
+          context: formatting-status
