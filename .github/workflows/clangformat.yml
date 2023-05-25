@@ -8,6 +8,17 @@ on:
     branches: ["master"]
 
 jobs:
+  setup-status:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set Format Status
+        uses: myrotvorets/set-commit-status-action@1.1.6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          status: pending
+          description: awaiting formatting
+          context: format-status
+
   format:
     runs-on: ubuntu-latest
     permissions:
@@ -33,3 +44,10 @@ jobs:
           git diff --quiet HEAD || git commit -m "AutoFormat with clang-format" 
           git push origin HEAD:${{github.head_ref}}
           
+      - name: Update Format Status
+        uses: myrotvorets/set-commit-status-action@1.1.6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          status: success
+          description: All files formatted!
+          context: format-status
