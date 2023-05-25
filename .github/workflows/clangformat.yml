@@ -20,6 +20,6 @@ jobs:
         run:
           clang-format ${{github.workspace}}/src/*.cpp ${{github.workspace}}/include/botui/*.h -style=file:${{github.workspace}}/.clang-format -i
       - name: Push to GitHub
-        run: |
-          git commit 
-          git push origin
+        uses: actions/github-script@v2
+        with:
+          script: git commit && git push
