@@ -17,11 +17,5 @@ AllowShortIfStatementsOnASingleLine: true
 BreakBeforeBraces: Custom
 BraceWrapping:
   AfterControlStatement: MultiLine
-  SplitEmptyFunction: false
-  SplitEmptyRecord: false
-  SplitEmptyNamespace: false
-  SplitEmptyEnum: false
-  SplitEmptyBlock: true
-  SplitEmptyLambda: true
   BeforeElse: true
   BeforeCatch: true
