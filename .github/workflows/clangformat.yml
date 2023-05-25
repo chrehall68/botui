@@ -16,6 +16,8 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
       - name: Format .cpp and .hpp files
         run:
           clang-format ${{github.workspace}}/src/*.cpp ${{github.workspace}}/include/botui/*.h -style=file:${{github.workspace}}/.clang-format -i
