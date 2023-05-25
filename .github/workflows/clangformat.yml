@@ -18,7 +18,7 @@ jobs:
       - uses: actions/checkout@v3
       - name: Format .cpp and .hpp files
         run:
-          clang-format ${{github.workspace}}/src/*.cpp ${{github.workspace}}/include/*.hpp -style=file:${{github.workspace}}/.clang-format -i
+          clang-format ./src/*.cpp ./include/*.hpp -style=file:./.clang-format -i
       - name: Push to GitHub
         run: |
           git commit 
