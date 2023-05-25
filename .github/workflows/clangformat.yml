@@ -17,9 +17,10 @@ jobs:
         uses: myrotvorets/set-commit-status-action@1.1.6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          allowForks: true
           status: pending
           description: awaiting formatting
-          context: formatting-status
+          context: format-status
 
       - uses: actions/checkout@v3
         with:
@@ -45,6 +46,7 @@ jobs:
         uses: myrotvorets/set-commit-status-action@1.1.6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          allowForks: true
           status: success
           description: All files formatted!
-          context: formatting-status
+          context: format-status
