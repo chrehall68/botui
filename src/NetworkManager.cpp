@@ -171,8 +171,7 @@ void NetworkManager::forgetNetwork(const Network &network) {
     foreach (const ConnectionPathPair &pair, getAllConnections()) {
         // if the ssid's match, then delete it
         if (network.ssid() ==
-            pair.first[NM_802_11_WIRELESS_KEY]["ssid"].toString())
-        {
+            pair.first[NM_802_11_WIRELESS_KEY]["ssid"].toString()) {
             OrgFreedesktopNetworkManagerSettingsConnectionInterface conn(
                 NM_SERVICE, pair.second.path(), QDBusConnection::systemBus());
             conn.Delete();
