@@ -23,7 +23,7 @@
 #endif
 
 QString getVersionNum() {
-    QFile file("/usr/share/kipr/board_fw_version.txt");
+    QFile file("/usr/share/kipr/bo  ard_fw_version.txt");
 
     if (!file.open(QIODevice::ReadOnly)) return QString("??");
 
