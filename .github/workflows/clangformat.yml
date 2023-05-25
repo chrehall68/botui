@@ -26,8 +26,5 @@ jobs:
       - name: Push to GitHub
         run:  |
           git commit -a -m "AutoFormat with clang-format"
-          echo ${{github.ref_name}}
-          echo ${{github.base_ref}}
-          echo ${{github.head_ref}}
-          git push origin 
+          git push origin ${{github.head_ref}}
           
