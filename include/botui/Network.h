@@ -8,7 +8,14 @@ class Network {
   public:
     enum Security { None = 0, Wep, DynamicWep, Wpa, WpaEnterprise };
 
-    enum Mode { Unknown = 0, AdHoc, Infrastructure, AP };
+	enum Mode
+	{
+		Unknown = 0,
+		AdHoc,
+		Infrastructure,
+		AP,
+		Mesh
+	};
 
     Network();
 
