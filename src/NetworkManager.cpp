@@ -31,29 +31,6 @@
 
 #define NM_DEVICE_TYPE_WIFI 2
 
-// Null flag.
-#define NM_802_11_AP_SEC_NONE 0x0
-// Access point supports pairwise 40-bit WEP encryption.
-#define NM_802_11_AP_SEC_PAIR_WEP40 0x1
-// Access point supports pairwise 104-bit WEP encryption.
-#define NM_802_11_AP_SEC_PAIR_WEP104 0x2
-// Access point supports pairwise TKIP encryption.
-#define NM_802_11_AP_SEC_PAIR_TKIP 0x4
-// Access point supports pairwise CCMP encryption.
-#define NM_802_11_AP_SEC_PAIR_CCMP 0x8
-// Access point supports a group 40-bit WEP cipher.
-#define NM_802_11_AP_SEC_GROUP_WEP40 0x10
-// Access point supports a group 104-bit WEP cipher.
-#define NM_802_11_AP_SEC_GROUP_WEP104 0x20
-// Access point supports a group TKIP cipher.
-#define NM_802_11_AP_SEC_GROUP_TKIP 0x40
-// Access point supports a group CCMP cipher.
-#define NM_802_11_AP_SEC_GROUP_CCMP 0x80
-// Access point supports PSK key management.
-#define NM_802_11_AP_SEC_KEY_MGMT_PSK 0x100
-// Access point supports 802.1x key management.
-#define NM_802_11_AP_SEC_KEY_MGMT_802_1X 0x200
-
 // Mode is unknown.
 #define NM_802_11_MODE_UNKNOWN 0
 
@@ -70,15 +47,15 @@ Connection DEFAULT_AP;
 
 #ifndef WOMBAT
 #define WIFI_DEVICE                                                            \
-    "wlp2s0" // varies per pc, almost always need to change this on different
+    "wlp6s0" // varies per pc, almost always need to change this on different
              // computers
 #define AP_NAME "COOL_NETWORK"
 #define AP_SSID QByteArray("COOL_NETWORK")
 #define AP_PASSWORD "COOL_PASSWORD"
 #else
 #define WIFI_DEVICE "wlan0" // always wlan0 for raspberry pi
-#define AP_NAME m_dev->serial() + "-wombat"
-#define AP_SSID (m_dev->serial() + "-wombat").toUtf8()
+#define AP_NAME m_dev->serial() + "-wombatAP"
+#define AP_SSID (AP_NAME).toUtf8()
 #define AP_PASSWORD SystemUtils::sha256(m_dev->id()).left(6) + "00"
 #endif
 
@@ -114,41 +91,40 @@ void NetworkManager::addNetwork(const Network &network) {
         connection[NM_802_11_WIRELESS_KEY]["ssid"] = network.ssid().toLatin1();
 
         // Network Mode (adhoc or infrastructure)
-        switch (network.mode()) {
-        case Network::Infrastructure:
-            connection[NM_802_11_WIRELESS_KEY]["mode"] = "infrastructure";
-            break;
-        case Network::AdHoc:
-            connection[NM_802_11_WIRELESS_KEY]["mode"] = "adhoc";
-            break;
-        case Network::AP:
-            connection[NM_802_11_WIRELESS_KEY]["mode"] = "ap";
-            break;
-        default:
-            break;
-        }
+        connection[NM_802_11_WIRELESS_KEY]["mode"] = "infrastructure";
 
-        const static QString securityTypes[] = {
-            "none", "wep", "ieee8021x", "wpa-psk", "wpa-epa"};
+    // according to the below link, wep uses none
+    // https://people.freedesktop.org/~lkundrak/nm-dbus-api/nm-settings.html
+    const static QString securityTypes[] = {
+        "none",
+        "none",
+        "ieee8021x",
+        "wpa-psk",
+        "wpa-epa"};
 
-        if (network.security() != Network::None) {
-            connection[NM_802_11_SECURITY_KEY]["key-mgmt"] =
-                securityTypes[network.security()];
-            switch (network.security()) {
-            case Network::DynamicWep:
-            case Network::Wep:
-                // WEP uses this key
-                connection[NM_802_11_SECURITY_KEY]["password"] =
-                    network.password();
-                break;
-            case Network::Wpa:
-            case Network::WpaEnterprise:
-                // WPA uses this one
-                connection[NM_802_11_SECURITY_KEY]["psk"] = network.password();
-                break;
-            default: // if nothing, then nothing
-                break;
-            }
+    if (network.security() != Network::None)
+    {
+
+      qDebug() << "addNetwork password: " << network.password();
+      connection[NM_802_11_SECURITY_KEY]["key-mgmt"] = securityTypes[network.security()];
+      switch (network.security())
+      {
+      case Network::Wep:
+        connection[NM_802_11_SECURITY_KEY]["wep-key0"] = network.password();
+        break;
+      case Network::DynamicWep:
+        // WEP uses this key
+        connection[NM_802_11_SECURITY_KEY]["password"] = network.password();
+        break;
+      case Network::Wpa:
+      case Network::WpaEnterprise:
+        // WPA uses this one
+        connection[NM_802_11_SECURITY_KEY]["psk"] = network.password();
+        break;
+      case Network::None:
+      default:
+        qDebug() << "this shouldn't happen";
+      }
 
             // Finally, tell our configuration about the security
             connection[NM_802_11_WIRELESS_KEY]["security"] =
@@ -541,22 +517,57 @@ NetworkManager::createAccessPoint(const QDBusObjectPath &accessPoint) const {
         newNetwork.setSecurity(Network::None);
     }
 
-    // Mode
-    const uint mode = accessPointObject.mode();
-    switch (mode) {
-    case NM_802_11_MODE_ADHOC:
-        newNetwork.setMode(Network::AdHoc);
-        break;
-    case NM_802_11_MODE_INFRA:
-        newNetwork.setMode(Network::Infrastructure);
-        break;
-    case NM_802_11_MODE_AP:
-        newNetwork.setMode(Network::AP);
-        break;
-    default:
-        newNetwork.setMode(Network::Unknown);
-        break;
+  // Encrypted, but not necessarily WEP, so double check
+  if (flags == 1)
+  {
+    uint rsnFlags = accessPointObject.rsnFlags(); // don't use wpaFlags because it isn't necessarily wpa
+
+    // list of all RSN Flags that mean different types of wpa
+    // these are, respectively, the following:
+    //  NM_802_11_AP_SEC_KEY_MGMT_PSK = 0x00000100,            // WPA/RSN Pre-Shared Key encryption is supported
+    //  NM_802_11_AP_SEC_KEY_MGMT_SAE = 0x00000400,            // WPA/RSN Simultaneous Authentication of Equals is supported
+    //  NM_802_11_AP_SEC_KEY_MGMT_OWE = 0x00000800,            // WPA/RSN Opportunistic Wireless Encryption is supported
+    //  NM_802_11_AP_SEC_KEY_MGMT_OWE_TM = 0x00001000,         // WPA/RSN Opportunistic Wireless Encryption transition mode is supported. Since: 1.26.
+    //  NM_802_11_AP_SEC_KEY_MGMT_EAP_SUITE_B_192 = 0x00002000 // WPA3 Enterprise Suite-B 192 bit mode is supported. Since: 1.30.
+    static QList<uint> WPARSNFlags = QList<uint>() << 0x00000100 << 0x00000400 << 0x00000800 << 0x00001000 << 0x00002000;
+
+    // list of all rsn flags.
+    // these are, respectively, the following:
+    //  NM_802_11_AP_SEC_NONE = 0x00000000,                    // the access point has no special security requirements
+    //  NM_802_11_AP_SEC_PAIR_WEP40 = 0x00000001,              // 40/64-bit WEP is supported for pairwise/unicast encryption
+    //  NM_802_11_AP_SEC_PAIR_WEP104 = 0x00000002,             // 104/128-bit WEP is supported for pairwise/unicast encryption
+    //  NM_802_11_AP_SEC_PAIR_TKIP = 0x00000004,               // TKIP is supported for pairwise/unicast encryption
+    //  NM_802_11_AP_SEC_PAIR_CCMP = 0x00000008,               // AES/CCMP is supported for pairwise/unicast encryption
+    //  NM_802_11_AP_SEC_GROUP_WEP40 = 0x00000010,             // 40/64-bit WEP is supported for group/broadcast encryption
+    //  NM_802_11_AP_SEC_GROUP_WEP104 = 0x00000020,            // 104/128-bit WEP is supported for group/broadcast encryption
+    //  NM_802_11_AP_SEC_GROUP_TKIP = 0x00000040,              // TKIP is supported for group/broadcast encryption
+    //  NM_802_11_AP_SEC_GROUP_CCMP = 0x00000080,              // AES/CCMP is supported for group/broadcast encryption
+    //  NM_802_11_AP_SEC_KEY_MGMT_PSK = 0x00000100,            // WPA/RSN Pre-Shared Key encryption is supported
+    //  NM_802_11_AP_SEC_KEY_MGMT_802_1X = 0x00000200,         // 802.1x authentication and key management is supported
+    //  NM_802_11_AP_SEC_KEY_MGMT_SAE = 0x00000400,            // WPA/RSN Simultaneous Authentication of Equals is supported
+    //  NM_802_11_AP_SEC_KEY_MGMT_OWE = 0x00000800,            // WPA/RSN Opportunistic Wireless Encryption is supported
+    //  NM_802_11_AP_SEC_KEY_MGMT_OWE_TM = 0x00001000,         // WPA/RSN Opportunistic Wireless Encryption transition mode is supported. Since: 1.26.
+    //  NM_802_11_AP_SEC_KEY_MGMT_EAP_SUITE_B_192 = 0x00002000 // WPA3 Enterprise Suite-B 192 bit mode is supported. Since: 1.30.
+    static QList<uint> RSNFlagsValues = QList<uint>() << 0x00000000 << 0x00000001 << 0x00000002 << 0x00000004 << 0x00000008 << 0x00000010 << 0x00000020 << 0x00000040 << 0x00000080 << 0x00000100 << 0x00000200 << 0x00000400 << 0x00000800 << 0x00001000 << 0x00002000;
+
+    // reverse iterate and find out which values make up `rsnFlags`
+    for (QList<uint>::const_iterator iter = RSNFlagsValues.constEnd() - 1; iter != RSNFlagsValues.constBegin(); --iter)
+    {
+      if (rsnFlags > *iter)
+      {
+        rsnFlags -= *iter;
+        if (WPARSNFlags.contains(*iter))
+        {
+          newNetwork.setSecurity(Network::Wpa);
+          break;
+        }
+      }
     }
+  }
+
+  // Mode
+  const uint mode = accessPointObject.mode();
+  newNetwork.setMode(static_cast<Network::Mode>(mode));
 
     // set password, if available. Note that this works even if the security is
     // None because then the value returned will just be ""
@@ -620,12 +631,17 @@ QString NetworkManager::getPassword(QString ssid) const {
         OrgFreedesktopNetworkManagerSettingsConnectionInterface conn(
             NM_SERVICE, pair.second.path(), QDBusConnection::systemBus());
 
-        QDBusPendingReply<Connection> reply =
-            conn.GetSecrets(NM_802_11_SECURITY_KEY);
-        return getReply(reply,
-                        "getting password")[NM_802_11_SECURITY_KEY]["psk"]
-            .toString();
-    }
+    QDBusPendingReply<Connection> reply = conn.GetSecrets(NM_802_11_SECURITY_KEY);
+    Connection conSecrets = getReply(reply, "getting password");
+
+    // WEP family
+    if (pair.first[NM_802_11_SECURITY_KEY]["key-mgmt"].toString() == "none" || pair.first[NM_802_11_SECURITY_KEY]["key-mgmt"].toString() == "ieee8021x")
+      return conSecrets[NM_802_11_SECURITY_KEY]["wep-key0"].toString();
+    // WPA family
+    else if (pair.first[NM_802_11_SECURITY_KEY]["key-mgmt"].toString() == "wpa-psk" || pair.first[NM_802_11_SECURITY_KEY]["key-mgmt"].toString() == "wpa-epa")
+      return conSecrets[NM_802_11_SECURITY_KEY]["psk"].toString();
+    return "";
+  }
 }
 
 void NetworkManager::getReply(QDBusPendingReply<> &reply,
