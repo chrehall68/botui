@@ -47,7 +47,7 @@ Connection DEFAULT_AP;
 
 #ifndef WOMBAT
 #define WIFI_DEVICE                                                            \
-    "wlp2s0" // varies per pc, almost always need to change this on different
+    "wlp6s0" // varies per pc, almost always need to change this on different
              // computers
 #define AP_NAME "COOL_NETWORK"
 #define AP_SSID QByteArray("COOL_NETWORK")
@@ -57,8 +57,6 @@ Connection DEFAULT_AP;
 #define AP_NAME m_dev->serial() + "-wombatAP"
 #define AP_SSID (AP_NAME).toUtf8()
 #define AP_PASSWORD SystemUtils::sha256(m_dev->id()).left(6) + "00"
-#endif
-
 #endif
 
 NetworkManager::~NetworkManager() {}
@@ -520,7 +518,7 @@ NetworkManager::createAccessPoint(const QDBusObjectPath &accessPoint) const {
     }
 
   // Encrypted, but not necessarily WEP, so double check
-  if (securityMode == 1)
+  if (flags == 1)
   {
     uint rsnFlags = accessPointObject.rsnFlags(); // don't use wpaFlags because it isn't necessarily wpa
 
